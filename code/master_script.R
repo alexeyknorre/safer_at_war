@@ -1,0 +1,5 @@
+source("code/0_initialize_packages.R")
+source("code/1_prepare_shootings_data.R")
+source("code/2_prepare_population_estimates.R")
+source("code/3_get_shootings_by_subgroups_by_cities.R")
+source("code/4_prepare_tables.R")
