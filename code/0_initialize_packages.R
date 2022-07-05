@@ -15,5 +15,5 @@ library(kableExtra)
 library(readxl)
 
 # Supress irrelevant messages
-options(dplyr.summarise.inform=F)
+options(dplyr.summarise.inform = F)
 options(datatable.showProgress = FALSE)
