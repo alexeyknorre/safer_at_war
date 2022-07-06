@@ -1888,6 +1888,7 @@ nonlethal,35,POC,Male,33.9821,-118.3318
 nonlethal,25,POC,Male,34.2658,-118.4169
 nonlethal,30,POC,Female,34.0806,-118.2176
 nonlethal,15,POC,Male,33.9708,-118.2827
+lethal,35,POC,Male,33.7899,-118.2975
 nonlethal,30,POC,Male,33.9176,-118.2829
 nonlethal,35,POC,Male,33.9102,-118.2872
 nonlethal,45,POC,Male,33.9636,-118.3112
@@ -2279,7 +2280,6 @@ nonlethal,20,POC,Male,33.9467,-118.2435
 lethal,35,POC,Male,34.0292,-118.366
 lethal,20,POC,Male,34.0268,-118.2808
 nonlethal,30,POC,Male,33.9843,-118.2696
-lethal,35,POC,Male,33.7894,-118.2975
 lethal,35,POC,Male,33.9597,-118.4189
 nonlethal,20,POC,Male,33.7862,-118.2908
 nonlethal,25,POC,Male,33.931,-118.2916

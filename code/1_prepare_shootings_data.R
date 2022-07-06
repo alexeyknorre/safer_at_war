@@ -1,15 +1,38 @@
-### Script prepares shootings data and stores it in a unified CSV format
+### Script downloads and prepares shootings data
 ### For each city, it subsets the data to years 2020 and 2021,
 ### recodes age, race, and sex, and removes wrongly geocoded incidents
 
-prepare_shootings_data <- function(years = c(2020, 2021)) {
-  message("--- Prepare shootings data...")
 
+prepare_shootings_data <- function(years = c(2020, 2021)) {
+  message("--- Download and prepare shootings data...")
+  
+  ### Download datasets
+  ## Philadelphia
+  # Info page: https://www.opendataphilly.org/dataset/shooting-victims
+  philadelphia_shootings_url <- "https://phl.carto.com/api/v2/sql?q=SELECT+*,+ST_Y(the_geom)+AS+lat,+ST_X(the_geom)+AS+lng+FROM+shootings&filename=shootings&format=csv&skipfields=cartodb_id"
+  download.file(philadelphia_shootings_url, "data/raw_shootings/philadelphia_shootings.csv")
+  
+  ## Chicago
+  # Info page: https://data.cityofchicago.org/Public-Safety/Violence-Reduction-Victims-of-Homicides-and-Non-Fa/gumc-mgzr
+  chicago_shootings_url <- "https://data.cityofchicago.org/api/views/gumc-mgzr/rows.csv?accessType=DOWNLOAD"
+  download.file(chicago_shootings_url, "data/raw_shootings/chicago_shootings.csv")
+  
+  ## NYC
+  # Info page: https://data.cityofnewyork.us/Public-Safety/NYPD-Shooting-Incident-Data-Historic-/833y-fsy8
+  nyc_shootings_url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+  download.file(nyc_shootings_url, "data/raw_shootings/nyc_shootings.csv")
+  
+  ## LA
+  # Info page: https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8
+  # NB: crime data, 126 MB
+  la_crime_url <- "https://data.lacity.org/api/views/2nrs-mtv8/rows.csv?accessType=DOWNLOAD"
+  download.file(la_crime_url, "data/raw_shootings/la_crime.csv")
+  
   # Starts of age intervals for merge with ACS population data
   acs_age_group_breaks <- c(0, 5, 10, 15, 18, 20, 25, 30, 35, 45, 55, 65, 75, 85)
 
   ### Philadelphia
-  city_crime <- fread("data/raw_shootings/Philadelphia/shootings.csv")
+  city_crime <- fread("data/raw_shootings/philadelphia_shootings.csv")
   city_crime$datetime <- ymd_hms(paste0(city_crime$date_, " ", city_crime$time),
     quiet = T
   )
@@ -46,7 +69,7 @@ prepare_shootings_data <- function(years = c(2020, 2021)) {
   fwrite(city_crime, "data/shootings_csv/Philadelphia.csv")
 
   ### New York City
-  city_crime <- fread("data/raw_shootings/New York/NYPD_Shooting_Incident_Data__Historic_.csv")
+  city_crime <- fread("data/raw_shootings/nyc_shootings.csv")
 
   city_crime$datetime <- mdy_hms(paste(city_crime$OCCUR_DATE, city_crime$OCCUR_TIME))
 
@@ -72,7 +95,7 @@ prepare_shootings_data <- function(years = c(2020, 2021)) {
   fwrite(city_crime, "data/shootings_csv/New York.csv")
 
   ### Chicago
-  city_crime <- fread("data/raw_shootings/Chicago/Violence_Reduction_-_Victims_of_Homicides_and_Non-Fatal_Shootings.csv")
+  city_crime <- fread("data/raw_shootings/chicago_shootings.csv")
 
   # Date
   city_crime$date <- parse_date_time(city_crime$DATE, "m/d/y IMS p")
@@ -112,7 +135,7 @@ prepare_shootings_data <- function(years = c(2020, 2021)) {
   fwrite(city_crime, "data/shootings_csv/Chicago.csv")
 
   ### Los Angeles
-  city_crime <- fread("data/raw_shootings/Los Angeles/Crime_Data_from_2020_to_Present.csv")
+  city_crime <- fread("data/raw_shootings/la_crime.csv")
 
   # Parse date and time
   city_crime$datetime <- parse_date_time(

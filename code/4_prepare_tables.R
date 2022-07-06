@@ -1,7 +1,7 @@
 # This script uses calculated shootings rates by cities, zip areas, age, sex,
 # and race groups and war mortality estimates to create tables for paper.
 message("--- Calculate rates, compare with war estimates, produce tables...")
-cities <- readRDS("data/shooting_rates.rds")
+cities <- readRDS("data/shootings_counts.rds")
 
 ### Table 2: City-level shootings rates and population table
 ## First create sub-tables to bind into the table with city-level estimates

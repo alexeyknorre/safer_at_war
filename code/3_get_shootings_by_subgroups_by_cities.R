@@ -137,7 +137,7 @@ loop_over_cities <- function() {
 
   cities <- rbindlist(cities, use.names = T)
 
-  saveRDS(cities, "data/shooting_rates.rds")
+  saveRDS(cities, "data/shootings_counts.rds")
 }
 
 loop_over_cities()

@@ -1,5 +1,5 @@
 ### Custom
-data/raw_shootings/*/*.csv
+data/raw_shootings/*
 *.DS_Store
 
 ### Standard
