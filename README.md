@@ -57,6 +57,6 @@ Note that counts of victims might slightly differ. The official crime data somet
 City boundary of Los Angeles is borrowed from [the official website of LA City](https://data.lacity.org/City-Infrastructure-Service-Requests/City-Boundary-of-Los-Angeles/ppge-zfr4).
 
 ## Contacts
-[Alex Knorre](alexknorre.com)
+[Alex Knorre](https://alexknorre.com)
 a.v.knorre@gmail.com
 
