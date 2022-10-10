@@ -66,6 +66,7 @@ prepare_population_estimates <- function() {
     acs_raw <- suppressMessages(
       get_acs(
         state = state_name,
+        year = 2019,
         geography = "zcta",
         variables = acs_vars_selection$name,
         geometry = TRUE,
