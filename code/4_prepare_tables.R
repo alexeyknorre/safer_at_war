@@ -11,6 +11,7 @@ tab2 <- cities %>%
   group_by(city) %>%
   summarise(
     pop = sum(population, na.rm = T),
+    pop_se = sqrt(sum(population_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -28,6 +29,7 @@ tab2_first_zcta <- cities %>%
   group_by(city, geo_label) %>%
   summarise(
     pop = sum(population, na.rm = T),
+    pop_se = sqrt(sum(population_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -57,6 +59,7 @@ tab2_first_zcta_young_male <- cities %>%
   group_by(city, geo_label) %>%
   summarise(
     pop = sum(population, na.rm = T),
+    pop_se = sqrt(sum(population_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -77,6 +80,7 @@ tab2_top10zcta_intermediate <- cities %>%
   group_by(city, geo_label) %>%
   summarise(
     pop = sum(population, na.rm = T),
+    pop_se = sqrt(sum(population_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -98,6 +102,7 @@ tab2_top10zcta_intermediate <- cities %>%
 tab2_top10zcta <- tab2_top10zcta_intermediate %>%
   summarise(
     pop = sum(pop, na.rm = T),
+    pop_se = sqrt(sum(pop_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_yearly,
       na.rm = T
     ),
@@ -118,6 +123,7 @@ tab2_top10zcta_youth_male <- cities %>%
     geo_label %in% tab2_top10zcta_intermediate$geo_label) %>%
   summarise(
     pop = sum(population, na.rm = T),
+    pop_se = sqrt(sum(population_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -133,6 +139,7 @@ tab2_top10zcta_youth_male <- cities %>%
   group_by(city) %>%
   summarise(
     pop = sum(pop, na.rm = T),
+    pop_se = sqrt(sum(pop_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_yearly,
       na.rm = T
     ),
@@ -155,6 +162,7 @@ tab2_first_zcta_young_male_nonw <- cities %>%
   group_by(city, geo_label) %>%
   summarise(
     pop = sum(population, na.rm = T),
+    pop_se = sqrt(sum(population_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -178,6 +186,7 @@ tab2_top10zcta_youth_male_nonw <- cities %>%
     geo_label %in% tab2_top10zcta_intermediate$geo_label) %>%
   summarise(
     pop = sum(population, na.rm = T),
+    pop_se = sqrt(sum(population_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -193,6 +202,7 @@ tab2_top10zcta_youth_male_nonw <- cities %>%
   group_by(city) %>%
   summarise(
     pop = sum(pop, na.rm = T),
+    pop_se = sqrt(sum(pop_se^2)),
     lethal_shootings_yearly = sum(lethal_shootings_yearly,
       na.rm = T
     ),
@@ -217,7 +227,7 @@ tab2_cities <- rbindlist(list(
 ), fill = T) %>%
   arrange(city, lethal_shootings_rate) %>%
   select(
-    city, type, pop, lethal_shootings_yearly, nonlethal_shootings_yearly,
+    city, type, pop, pop_se, lethal_shootings_yearly, nonlethal_shootings_yearly,
     lethal_shootings_rate, nonlethal_shootings_rate
   ) %>%
   mutate_if(is.numeric, round, digits = 2)
@@ -240,13 +250,14 @@ tab2_cities <- tab2_cities %>%
     "Los Angeles",
     "New York"
   )), is_top10, is_poc) %>%
-  select(city, type, pop, total_firearm_homicides, total_nonlethal_shootings, is_top10, is_poc)
+  select(city, type, pop, pop_se, total_firearm_homicides, total_nonlethal_shootings, is_top10, is_poc)
 
 # Calculate the totals across all cities
 tab2_cities_total <- tab2_cities %>%
   group_by(is_top10, is_poc) %>%
   summarise(
     pop = sum(pop),
+    pop_se = sqrt(sum(pop_se^2)),
     total_firearm_homicides = sum(total_firearm_homicides),
     total_nonlethal_shootings = sum(total_nonlethal_shootings)
   ) %>%
@@ -262,7 +273,7 @@ tab2_cities_total <- tab2_cities %>%
     city = "Total"
   ) %>%
   select(
-    city, type, pop, total_firearm_homicides,
+    city, type, pop, pop_se, total_firearm_homicides,
     total_nonlethal_shootings, is_top10, is_poc
   )
 
@@ -304,7 +315,7 @@ tab2_cities_binded <- left_join(tab2_cities_with_totals,
 # Prettify:
 tab2_cities_binded <- tab2_cities_binded %>%
   select(
-    city, type, pop, total_firearm_homicides, total_nonlethal_shootings,
+    city, type, pop, pop_se, total_firearm_homicides, total_nonlethal_shootings,
     perc_lethal, perc_nonlethal
   )
 
@@ -328,9 +339,10 @@ tab2_cities_publish <- tab2_cities_binded %>%
     city == "Philadelphia" ~
       "Philadelphia, males 18-29",
     city == "Total" ~ "Total"
-  )) %>%
+  ),
+  pop_se = round(pop_se)) %>%
   setNames(c(
-    "city", "Subset", "Pop.",
+    "city", "Subset", "Pop.", "Pop. (SE)",
     "Total firearm homicides", "Total nonlethal shootings",
     "% of firearm homicides", "% on nonfatal shootings"
   ))
@@ -358,18 +370,44 @@ tab1_wars <- read_excel("data/war_casualties.xlsx")
 # Prepare for binding
 tab1_wars <- tab1_wars %>%
   select(type, wia_per_100kty, td_per_100kty) %>%
-  mutate(city = "Wars") %>%
+  mutate(city = "Wars",
+         lethal_shootings_rate_lower = NA,
+         lethal_shootings_rate_upper = NA,
+         nonlethal_shootings_rate_lower = NA,
+         nonlethal_shootings_rate_upper = NA) %>%
   select(
     city, type,
     td_per_100kty,
-    wia_per_100kty
+    lethal_shootings_rate_lower,
+    lethal_shootings_rate_upper,
+    wia_per_100kty,
+    nonlethal_shootings_rate_lower,
+    nonlethal_shootings_rate_upper
   ) %>%
-  setNames(c("city", "type", "lethal_shootings_rate", "nonlethal_shootings_rate"))
+  setNames(c("city", "type", "lethal_shootings_rate",
+             "lethal_shootings_rate_lower",
+             "lethal_shootings_rate_upper",
+             "nonlethal_shootings_rate",
+             "nonlethal_shootings_rate_lower",
+             "nonlethal_shootings_rate_upper"))
+
+# Calculate confidence intervals for rates
+tab2_cities_ci <- tab2_cities_saved %>% 
+  mutate(lethal_shootings_rate_upper = lethal_shootings_yearly / (pop - 1.96*pop_se) * 100000,
+         lethal_shootings_rate_lower = lethal_shootings_yearly / (pop + 1.96*pop_se) * 100000,
+         nonlethal_shootings_rate_upper = nonlethal_shootings_yearly / (pop - 1.96*pop_se) * 100000,
+         nonlethal_shootings_rate_lower = nonlethal_shootings_yearly / (pop + 1.96*pop_se) * 100000)
 
 # Subset city-level estimates for comparison
-tab1_cities_subset <- tab2_cities_saved %>%
+tab1_cities_subset <- tab2_cities_ci %>%
   filter(grepl(", males", type)) %>%
-  select(city, type, lethal_shootings_rate, nonlethal_shootings_rate)
+  select(city, type,
+         lethal_shootings_rate,
+         lethal_shootings_rate_lower,
+         lethal_shootings_rate_upper,
+         nonlethal_shootings_rate,
+         nonlethal_shootings_rate_lower,
+         nonlethal_shootings_rate_upper)
 
 # Bind city-level and war-level estimates
 tab1_overall <- rbind(
@@ -386,13 +424,60 @@ tab1_overall <- rbind(
   ) %>%
   # Round rates, calculate RR using Afghan war as baselevel
   mutate(
-    lethal_shootings_rate = round(lethal_shootings_rate),
     lethal_rate_ratio = round(lethal_shootings_rate /
       tab1_wars[tab1_wars$type == "Afghan War", ][[c("lethal_shootings_rate")]], 2),
+    lethal_rate_ratio_lower = round(lethal_shootings_rate_lower /
+                                tab1_wars[tab1_wars$type == "Afghan War", ][[c("lethal_shootings_rate")]], 2),
+    lethal_rate_ratio_upper = round(lethal_shootings_rate_upper /
+                                tab1_wars[tab1_wars$type == "Afghan War", ][[c("lethal_shootings_rate")]], 2),
     nonlethal_shootings_rate = round(nonlethal_shootings_rate),
     nonlethal_rate_ratio = round(nonlethal_shootings_rate /
       tab1_wars[tab1_wars$type == "Afghan War", ][[c("nonlethal_shootings_rate")]], 2),
+    nonlethal_rate_ratio_lower = round(nonlethal_shootings_rate_lower /
+                                   tab1_wars[tab1_wars$type == "Afghan War", ][[c("nonlethal_shootings_rate")]], 2),
+    nonlethal_rate_ratio_upper = round(nonlethal_shootings_rate_upper /
+                                   tab1_wars[tab1_wars$type == "Afghan War", ][[c("nonlethal_shootings_rate")]], 2),
+    lethal_shootings_rate = format(lethal_shootings_rate,digits = 1, big.mark = ","),
+    lethal_shootings_rate_lower = format(lethal_shootings_rate_lower,digits = 1, big.mark = ","),
+    lethal_shootings_rate_upper = format(lethal_shootings_rate_upper,digits = 1, big.mark = ","),
+    nonlethal_shootings_rate = format(nonlethal_shootings_rate,digits = 1, big.mark = ","),
+    nonlethal_shootings_rate_upper = format(nonlethal_shootings_rate_upper,digits = 1, big.mark = ","),
+    nonlethal_shootings_rate_lower = format(nonlethal_shootings_rate_lower,digits = 1, big.mark = ","),
   ) %>%
+  mutate(across(c(lethal_rate_ratio,
+                  lethal_rate_ratio_lower,
+                  lethal_rate_ratio_upper,
+                  nonlethal_rate_ratio,
+                  nonlethal_rate_ratio_lower,
+                  nonlethal_rate_ratio_upper),
+                ~ format(.x, nsmall = 2))) %>%
+  mutate(across(c(lethal_shootings_rate,
+                  lethal_shootings_rate_lower,
+                  lethal_shootings_rate_upper,
+                  nonlethal_shootings_rate,
+                  nonlethal_shootings_rate_upper,
+                  nonlethal_shootings_rate_lower),
+                ~ trimws(.x))) %>% 
+  mutate(lethal_rate_ratio = ifelse(city != "Wars",
+                                    paste0(lethal_rate_ratio,
+                                   " (",lethal_rate_ratio_lower,"-",
+                                   lethal_rate_ratio_upper,")"),
+                                   lethal_rate_ratio),
+         nonlethal_rate_ratio = ifelse(city != "Wars",
+                                       paste0(nonlethal_rate_ratio,
+                                    " (",nonlethal_rate_ratio_lower,"-",
+                                    nonlethal_rate_ratio_upper,")"),
+                                    nonlethal_rate_ratio),
+         lethal_shootings_rate = ifelse(city != "Wars",
+                                     paste0(lethal_shootings_rate,
+                                            " (",lethal_shootings_rate_lower,"-",
+                                            lethal_shootings_rate_upper,")"),
+                                     lethal_shootings_rate),
+         nonlethal_shootings_rate = ifelse(city != "Wars",
+                                        paste0(nonlethal_shootings_rate,
+                                               " (",nonlethal_shootings_rate_lower,"-",
+                                               nonlethal_shootings_rate_upper,")"),
+                                        nonlethal_shootings_rate)) %>% 
   select(
     city, type, lethal_shootings_rate, lethal_rate_ratio,
     nonlethal_shootings_rate, nonlethal_rate_ratio
@@ -442,3 +527,41 @@ kbl(tab1_overall_publish[, -1],
 ) %>%
   pack_rows(index = table(forcats::fct_inorder(tab1_overall_publish$city))) %>%
   save_kable(., file = "tables/wars_and_cities.tex")
+
+## Prepare JAMA formatted table
+tab1_overall_publish_simple <- tab1_overall %>%
+  mutate(city = case_when(
+    city == "Wars" ~
+      "US combatants of all ages",
+    city == "Chicago" ~
+      "Chicago, males 20-29",
+    city == "Los Angeles" ~
+      "Los Angeles, males 18-29",
+    city == "New York" ~
+      "New York, males 18-24",
+    city == "Philadelphia" ~
+      "Philadelphia, males 18-29"
+  )) %>%
+  mutate(type = case_when(
+    type == "Top 1 ZIP code, males youth" ~
+      "Most violent ZIP code",
+    type == "Top 10% ZIP codes, males youth" ~
+      "Top 10% most violent ZIP codes",
+    type == "Top 10% ZIP codes, non-White males youth" ~
+      "(non-white males only)",
+    TRUE ~ type
+  )) %>%
+  add_row(type = "New York, males 18-24",.before = 9) %>% 
+  add_row(type = "Los Angeles, males 18-29",.before = 7) %>% 
+  add_row(type = "Philadelphia, males 18-29",.before = 5) %>% 
+  add_row(type = "Chicago, males 20-29",.before = 3) %>% 
+  add_row(type = "US combatants of all ages",.before = 1) %>% 
+  select(-city) %>% 
+  setNames(c(
+    "Subset", "Gun homicides per 100K person-years", "RR",
+    "Violent injuries per 100K person-years", "RR"
+  ))
+
+tab1_overall_publish_simple[is.na(tab1_overall_publish_simple)] <- ""
+
+openxlsx::write.xlsx(tab1_overall_publish_simple, "tables/wars_and_cities.xlsx")

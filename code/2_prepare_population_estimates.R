@@ -94,8 +94,8 @@ prepare_population_estimates <- function() {
     }
 
     # Remove margin of error
-    acs <- acs_raw[, grep(".*(?<!M)$", names(acs_raw), perl = TRUE)]
-
+    #acs <- acs_raw[, grep(".*(?<!M)$", names(acs_raw), perl = TRUE)]
+    acs <- acs_raw
     # Save ZCTA geometry
     acs_geometry <- acs %>%
       mutate(geo_label = NAME) %>%
@@ -103,8 +103,16 @@ prepare_population_estimates <- function() {
 
     ## Merge ACS population data with just created dataframe with
     ## variable descriptions:
-
-    acs_long <- pivot_longer(acs, cols = starts_with("B"), values_to = "population")
+    
+    # Re-arrange data with population estimates and MOEs
+    acs_long <- pivot_longer(acs, cols = starts_with("B"), values_to = "population") %>% 
+      mutate(type = substr(name,nchar(name), nchar(name)),
+             name = paste0(substr(name,1, nchar(name)-1),"E"))
+      
+    acs_long <- pivot_wider(acs_long, names_from = "type", values_from = "population") %>% 
+      mutate(population = E,
+                population_moe = M) %>% 
+      select(-c(E,M))
 
     acs_vars_selection_prep <- acs_vars_selection %>%
       mutate(name = paste0(name, "E"))
@@ -112,7 +120,8 @@ prepare_population_estimates <- function() {
 
     acs_wide <- left_join(acs_long, acs_vars_selection_prep, by = "name") %>%
       rename(geo_label = NAME) %>%
-      select(geo_label, sex, race, age_group, population)
+      mutate(population_se = population_moe/1.645) %>% 
+      select(geo_label, sex, race, age_group, population, population_se)
 
     ## We now have a dataframe with populations of
     ## each subgroup: totals and whites. Let's substract whites from totals
@@ -127,13 +136,15 @@ prepare_population_estimates <- function() {
         right = F
       )) %>%
       group_by(geo_label, sex, age_group) %>%
-      summarise(population_total = sum(population))
+      summarise(population_total = sum(population),
+                population_total_se = sqrt(sum((population_se)^2)))
 
     acs_whites <- acs_wide %>%
       st_drop_geometry() %>%
       filter(race == "White") %>%
-      mutate(population_White = population) %>%
-      select(-one_of(c("race", "population")))
+      mutate(population_White = population,
+             population_se_White = population_se) %>%
+      select(-one_of(c("race", "population","population_se")))
 
     # This gives population by age groups, sex, and race (white/non-white)
     acs_race_populations <- left_join(acs_totals, acs_whites, by = c(
@@ -141,15 +152,18 @@ prepare_population_estimates <- function() {
       "age_group",
       "sex"
     )) %>%
-      mutate(population_POC = population_total - population_White) %>%
-      select(-one_of(c("population_total"))) %>%
+      mutate(population_del_POC = population_total - population_White,
+             population_se_del_POC = sqrt(population_total_se^2 + population_se_White^2),
+             population_del_White = population_White,
+             population_se_del_White = population_se_White) %>%
+      select(-one_of(c("population_total","population_total_se",
+                       "population_White","population_se_White"))) %>%
       pivot_longer(
-        cols = population_White:population_POC,
+        cols = population_del_POC:population_se_del_White,
         names_to = c("population", "race"),
-        names_sep = "_"
+        names_sep = "_del_"
       ) %>%
-      mutate(population = value) %>%
-      select(-one_of(c("value"))) %>%
+      pivot_wider(names_from = "population", values_from = "value") %>% 
       ungroup()
 
     # Let's merge with ZCTA geometry back

@@ -60,7 +60,8 @@ calculate_shooting_counts <- function(city_name,
       )) %>%
       mutate(age_group = as.character(age_group)) %>%
       group_by(geo_label, sex, age_group, race) %>%
-      summarise(population = sum(population)) %>%
+      summarise(population = sum(population),
+                population_se = sqrt(sum(population_se^2))) %>%
       ungroup()
   }
 
@@ -77,7 +78,8 @@ calculate_shooting_counts <- function(city_name,
       )) %>%
       mutate(age_group = as.character(age_group)) %>%
       group_by(geo_label, sex, age_group, race) %>%
-      summarise(population = sum(population)) %>%
+      summarise(population = sum(population),
+                population_se = sqrt(sum(population_se^2))) %>%
       ungroup()
   }
 
@@ -116,7 +118,7 @@ calculate_shooting_counts <- function(city_name,
   shooting_counts <- shooting_counts %>%
     st_cast("MULTIPOLYGON") %>%
     select(
-      city, geo_label, age_group, sex, race, population,
+      city, geo_label, age_group, sex, race, population, population_se,
       lethal_shootings_count, nonlethal_shootings_count, geometry
     )
 
