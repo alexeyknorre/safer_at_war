@@ -53,7 +53,7 @@ calculate_shooting_counts <- function(city_name,
 
     # Aggregate population counts by new age groups
     acs_zcta <- acs_zcta %>%
-      mutate(age_group = cut(as.numeric(age_group),
+      mutate(age_group = cut(as.numeric(as.character(age_group)),
         breaks = c(city_age_group_breaks, 120),
         labels = c(city_age_group_labels),
         right = F
@@ -71,7 +71,7 @@ calculate_shooting_counts <- function(city_name,
 
     # Aggregate population counts by new age groups
     acs_zcta <- acs_zcta %>%
-      mutate(age_group = cut(as.numeric(age_group),
+      mutate(age_group = cut(as.numeric(as.character(age_group)),
         breaks = c(city_age_group_breaks, 120),
         labels = c(city_age_group_labels),
         right = F

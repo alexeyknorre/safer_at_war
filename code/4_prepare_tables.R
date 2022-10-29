@@ -10,8 +10,11 @@ cities <- readRDS("data/shootings_counts.rds")
 tab2 <- cities %>%
   group_by(city) %>%
   summarise(
-    pop = sum(population, na.rm = T),
-    pop_se = sqrt(sum(population_se^2)),
+    # This seemingly weird filtering on race condition
+    # is used, because Hispanic is a separate category,
+    # and Whites + Blacks + Others = Total
+    pop = sum(population[race != "Hispanic"], na.rm = T),
+    pop_se = sqrt(sum(population_se[race != "Hispanic"]^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -28,8 +31,8 @@ tab2 <- cities %>%
 tab2_first_zcta <- cities %>%
   group_by(city, geo_label) %>%
   summarise(
-    pop = sum(population, na.rm = T),
-    pop_se = sqrt(sum(population_se^2)),
+    pop = sum(population[race != "Hispanic"], na.rm = T),
+    pop_se = sqrt(sum(population_se[race != "Hispanic"]^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -58,8 +61,8 @@ tab2_first_zcta_young_male <- cities %>%
     geo_label %in% tab2_first_zcta$geo_label) %>%
   group_by(city, geo_label) %>%
   summarise(
-    pop = sum(population, na.rm = T),
-    pop_se = sqrt(sum(population_se^2)),
+    pop = sum(population[race != "Hispanic"], na.rm = T),
+    pop_se = sqrt(sum(population_se[race != "Hispanic"]^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -79,8 +82,8 @@ tab2_first_zcta_young_male <- cities %>%
 tab2_top10zcta_intermediate <- cities %>%
   group_by(city, geo_label) %>%
   summarise(
-    pop = sum(population, na.rm = T),
-    pop_se = sqrt(sum(population_se^2)),
+    pop = sum(population[race != "Hispanic"], na.rm = T),
+    pop_se = sqrt(sum(population_se[race != "Hispanic"]^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -122,8 +125,8 @@ tab2_top10zcta_youth_male <- cities %>%
     age_group %in% c("18", "20", "25", "20-29", "18-24") &
     geo_label %in% tab2_top10zcta_intermediate$geo_label) %>%
   summarise(
-    pop = sum(population, na.rm = T),
-    pop_se = sqrt(sum(population_se^2)),
+    pop = sum(population[race != "Hispanic"], na.rm = T),
+    pop_se = sqrt(sum(population_se[race != "Hispanic"]^2)),
     lethal_shootings_yearly = sum(lethal_shootings_count,
       na.rm = T
     ) / 2,
@@ -152,14 +155,13 @@ tab2_top10zcta_youth_male <- cities %>%
   ) %>%
   mutate(type = "Top 10% ZIP codes, males youth")
 
-## Same subsetting as above but for non-whites only
+## Same subsetting as above but for racial categories
 # Top 1 ZCTA
-tab2_first_zcta_young_male_nonw <- cities %>%
+tab2_first_zcta_young_male_by_race <- cities %>%
   filter(sex == "Male" &
-    race == "POC" &
     age_group %in% c("18", "20", "25", "20-29", "18-24") &
     geo_label %in% tab2_first_zcta$geo_label) %>%
-  group_by(city, geo_label) %>%
+  group_by(city, geo_label, race) %>%
   summarise(
     pop = sum(population, na.rm = T),
     pop_se = sqrt(sum(population_se^2)),
@@ -175,13 +177,12 @@ tab2_first_zcta_young_male_nonw <- cities %>%
   ) %>%
   arrange(desc(lethal_shootings_rate)) %>%
   ungroup() %>%
-  mutate(type = "Top 1 ZIP code, non-White males youth")
+  mutate(type = "Top 1 ZIP code, males youth by race")
 
 # Top 10% ZCTAs
-tab2_top10zcta_youth_male_nonw <- cities %>%
-  group_by(city, geo_label) %>%
+tab2_top10zcta_youth_male_by_race <- cities %>%
+  group_by(city, geo_label, race) %>%
   filter(sex == "Male" &
-    race == "POC" &
     age_group %in% c("18", "20", "25", "20-29", "18-24") &
     geo_label %in% tab2_top10zcta_intermediate$geo_label) %>%
   summarise(
@@ -199,7 +200,7 @@ tab2_top10zcta_youth_male_nonw <- cities %>%
   ) %>%
   arrange(desc(lethal_shootings_rate)) %>%
   ungroup() %>%
-  group_by(city) %>%
+  group_by(city,race) %>%
   summarise(
     pop = sum(pop, na.rm = T),
     pop_se = sqrt(sum(pop_se^2)),
@@ -213,21 +214,21 @@ tab2_top10zcta_youth_male_nonw <- cities %>%
     nonlethal_shootings_rate = nonlethal_shootings_yearly /
       pop * 100000
   ) %>%
-  mutate(type = "Top 10% ZIP codes, non-White males youth")
+  mutate(type = "Top 10% ZIP codes, males youth by race")
 
 ## Bind it all together
 tab2_cities <- rbindlist(list(
   tab2,
   tab2_top10zcta,
   tab2_top10zcta_youth_male,
-  tab2_top10zcta_youth_male_nonw,
+  tab2_top10zcta_youth_male_by_race,
   tab2_first_zcta,
   tab2_first_zcta_young_male,
-  tab2_first_zcta_young_male_nonw
+  tab2_first_zcta_young_male_by_race
 ), fill = T) %>%
-  arrange(city, lethal_shootings_rate) %>%
+  arrange(city, type, race) %>%
   select(
-    city, type, pop, pop_se, lethal_shootings_yearly, nonlethal_shootings_yearly,
+    city, type, race, pop, pop_se, lethal_shootings_yearly, nonlethal_shootings_yearly,
     lethal_shootings_rate, nonlethal_shootings_rate
   ) %>%
   mutate_if(is.numeric, round, digits = 2)
@@ -242,19 +243,22 @@ tab2_cities <- tab2_cities %>%
     total_firearm_homicides = lethal_shootings_yearly * 2,
     total_nonlethal_shootings = nonlethal_shootings_yearly * 2,
     is_top10 = grepl("Top 10%", type, fixed = T),
-    is_poc = grepl("non-White", type, fixed = T)
+    is_race_subgroup = grepl("race", type, fixed = T),
+    race_arranged = factor(race, levels = c("Black","Hispanic","White","Other"))
   ) %>%
   arrange(match(city, c(
     "Chicago",
     "Philadelphia",
     "Los Angeles",
     "New York"
-  )), is_top10, is_poc) %>%
-  select(city, type, pop, pop_se, total_firearm_homicides, total_nonlethal_shootings, is_top10, is_poc)
+  )), is_top10,is_race_subgroup, race_arranged) %>%
+  select(city, type, pop, pop_se,
+         total_firearm_homicides, total_nonlethal_shootings,
+         is_top10,is_race_subgroup, race_arranged)
 
 # Calculate the totals across all cities
 tab2_cities_total <- tab2_cities %>%
-  group_by(is_top10, is_poc) %>%
+  group_by(is_top10, is_race_subgroup, race_arranged) %>%
   summarise(
     pop = sum(pop),
     pop_se = sqrt(sum(pop_se^2)),
@@ -262,58 +266,60 @@ tab2_cities_total <- tab2_cities %>%
     total_nonlethal_shootings = sum(total_nonlethal_shootings)
   ) %>%
   ungroup() %>%
-  arrange(is_top10, is_poc) %>%
+  arrange(is_top10, is_race_subgroup, race_arranged) %>%
   mutate(
-    type = c(
-      "Top 1 ZIP code, males youth",
-      "Top 1 ZIP code, non-White males youth",
-      "Top 10% ZIP codes, males youth",
-      "Top 10% ZIP codes, non-White males youth"
-    ),
+    type = paste0(ifelse(is_top10,"Top 1 ZIP code, ","Top 10% ZIP codes, "),
+                 ifelse(is_race_subgroup,
+                        paste0("males youth (",as.character(race_arranged),")"),
+                        "males youth")),
     city = "Total"
   ) %>%
   select(
     city, type, pop, pop_se, total_firearm_homicides,
-    total_nonlethal_shootings, is_top10, is_poc
+    total_nonlethal_shootings, is_top10, is_race_subgroup, race_arranged
   )
 
 # Bind totals with city-levels estimates
 tab2_cities_with_totals <- rbind(tab2_cities, tab2_cities_total)
 
-# Calculate percentages of non-white victims
-tab2_cities_percenages <- tab2_cities_with_totals %>%
-  select(
-    city, is_poc, is_top10, total_firearm_homicides,
-    total_nonlethal_shootings
-  ) %>%
-  pivot_wider(
-    names_from = c("is_poc"),
-    values_from = c(
-      "total_firearm_homicides",
-      "total_nonlethal_shootings"
-    )
-  ) %>%
-  mutate(
-    perc_lethal = round(total_firearm_homicides_TRUE /
-      total_firearm_homicides_FALSE, 3),
-    perc_nonlethal = round(total_nonlethal_shootings_TRUE /
-      total_nonlethal_shootings_FALSE, 3)
+# Calculate percentages by each racial category
+tab2_cities_percentages_total <- tab2_cities_with_totals %>% 
+  filter(!is_race_subgroup) %>% 
+  select(-race_arranged)
+
+tab2_cities_percentages_subgroups <- tab2_cities_with_totals %>%
+  filter(is_race_subgroup) %>% 
+  mutate(total_firearm_homicides_sub = total_firearm_homicides,
+         total_nonlethal_shootings_sub = total_nonlethal_shootings) %>% 
+  select(city, is_top10, race_arranged,
+         total_firearm_homicides_sub,total_nonlethal_shootings_sub)
+
+tab2_cities_percentages_by_subgroups <- left_join(tab2_cities_percentages_total,
+                                                  tab2_cities_percentages_subgroups,
+                                                  by = c("city","is_top10")) %>% 
+  mutate(perc_lethal = round(total_firearm_homicides_sub /
+                               total_firearm_homicides, 3),
+         perc_nonlethal = round(total_nonlethal_shootings_sub /
+                                  total_nonlethal_shootings, 3)
   ) %>%
   mutate(
     perc_lethal = paste0(format(perc_lethal * 100), "%"),
     perc_nonlethal = paste0(format(perc_nonlethal * 100), "%")
   ) %>%
-  select(city, is_top10, perc_lethal, perc_nonlethal) %>%
-  mutate(is_poc = TRUE)
+  select(city, is_top10, race_arranged, perc_lethal, perc_nonlethal)
 
 # Bind together
 tab2_cities_binded <- left_join(tab2_cities_with_totals,
-  tab2_cities_percenages,
-  by = c("city", "is_top10", "is_poc")
+                                tab2_cities_percentages_by_subgroups,
+  by = c("city", "is_top10", "race_arranged")
 )
 
 # Prettify:
 tab2_cities_binded <- tab2_cities_binded %>%
+  mutate(type = ifelse(is_top10,"Top 10% most violent ZIP codes","Most violent ZIP code"),
+         type = ifelse(is_race_subgroup,
+                       as.character(race_arranged),
+                       type)) %>% 
   select(
     city, type, pop, pop_se, total_firearm_homicides, total_nonlethal_shootings,
     perc_lethal, perc_nonlethal
@@ -322,16 +328,6 @@ tab2_cities_binded <- tab2_cities_binded %>%
 tab2_cities_binded[is.na(tab2_cities_binded)] <- "-"
 
 tab2_cities_publish <- tab2_cities_binded %>%
-  mutate(type = case_when(
-    type == "Top 1 ZIP code, males youth" ~
-      "Most violent ZIP code",
-    type == "Top 1 ZIP code, non-White males youth" ~
-      "(non-white males only)",
-    type == "Top 10% ZIP codes, males youth" ~
-      "Top 10% most violent ZIP codes",
-    type == "Top 10% ZIP codes, non-White males youth" ~
-      "(non-white males only)"
-  )) %>%
   mutate(city = case_when(
     city == "Chicago" ~ "Chicago, males 20-29",
     city == "Los Angeles" ~ "Los Angeles, males 18-29",
@@ -341,26 +337,21 @@ tab2_cities_publish <- tab2_cities_binded %>%
     city == "Total" ~ "Total"
   ),
   pop_se = round(pop_se)) %>%
+  add_row(type = "Total",.before = 41) %>% 
+  add_row(type = "New York, males 18-24",.before = 31) %>% 
+  add_row(type = "Los Angeles, males 18-29",.before = 21) %>% 
+  add_row(type = "Philadelphia, males 18-29",.before = 11) %>% 
+  add_row(type = "Chicago, males 20-29",.before = 1) %>% 
+  select(-city) %>% 
   setNames(c(
-    "city", "Subset", "Pop.", "Pop. (SE)",
+    "Subset", "Pop.", "Pop. (SE)",
     "Total firearm homicides", "Total nonlethal shootings",
-    "% of firearm homicides", "% on nonfatal shootings"
+    "% of firearm homicides", "% of nonfatal shootings"
   ))
 
-# Check it fast
-# tab2_cities_publish
+tab2_cities_publish[is.na(tab2_cities_publish)] <- "-"
 
-# Export
-kbl(tab2_cities_publish %>% select(-city),
-  format = "latex", booktabs = T,
-  format.args = list(big.mark = ","),
-  align = "lrrrrrrrr",
-  linesep = "",
-  caption = "Gun-related mortality and wound rates in major US cities",
-  label = "cities_detailed"
-) %>%
-  pack_rows(index = table(forcats::fct_inorder(tab2_cities_publish$city))) %>%
-  save_kable(., file = "tables/cities_detailed.tex")
+openxlsx::write.xlsx(tab2_cities_publish, "tables/tab2_cities_detailed.xlsx")
 
 
 ### Table 1
@@ -393,6 +384,7 @@ tab1_wars <- tab1_wars %>%
 
 # Calculate confidence intervals for rates
 tab2_cities_ci <- tab2_cities_saved %>% 
+  filter(is.na(race)) %>% 
   mutate(lethal_shootings_rate_upper = lethal_shootings_yearly / (pop - 1.96*pop_se) * 100000,
          lethal_shootings_rate_lower = lethal_shootings_yearly / (pop + 1.96*pop_se) * 100000,
          nonlethal_shootings_rate_upper = nonlethal_shootings_yearly / (pop - 1.96*pop_se) * 100000,
@@ -512,23 +504,6 @@ tab1_overall_publish <- tab1_overall %>%
   ))
 
 
-# Check it fast
-# tab1_overall_publish
-
-# Export to tex
-kbl(tab1_overall_publish[, -1],
-  format = "latex", booktabs = T,
-  format.args = list(big.mark = ","),
-  align = "lrrrrrrrrrr",
-  linesep = "",
-  caption = "Gun-related mortality and wound rates
-    in recent wars and major US cities",
-  label = "wars_and_cities"
-) %>%
-  pack_rows(index = table(forcats::fct_inorder(tab1_overall_publish$city))) %>%
-  save_kable(., file = "tables/wars_and_cities.tex")
-
-## Prepare JAMA formatted table
 tab1_overall_publish_simple <- tab1_overall %>%
   mutate(city = case_when(
     city == "Wars" ~
@@ -564,4 +539,4 @@ tab1_overall_publish_simple <- tab1_overall %>%
 
 tab1_overall_publish_simple[is.na(tab1_overall_publish_simple)] <- ""
 
-openxlsx::write.xlsx(tab1_overall_publish_simple, "tables/wars_and_cities.xlsx")
+openxlsx::write.xlsx(tab1_overall_publish_simple, "tables/tab1_wars_and_cities.xlsx")
